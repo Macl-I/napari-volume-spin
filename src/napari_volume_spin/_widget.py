@@ -1,5 +1,6 @@
 """napari widget for continuous 3D camera spin animation with looping GIF/MP4 export."""
 
+import warnings
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -262,6 +263,15 @@ class VolumeSpinWidget(QWidget):
     def _current_axis_vector(self):
         return _AXIS_VECTORS[self.axis_group.checkedId()]
 
+    def _toggle_activity_dock(self, visible):
+        # Forces napari's activity dock open so the progress bar is actually visible (as napari-convpaint does)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', category=FutureWarning)
+            try:
+                self.viewer.window._status_bar._toggle_activity_dock(visible)
+            except AttributeError:
+                pass
+
     def _rotate_camera_relative(self):
         camera = self._get_camera()
         if camera is None:
@@ -313,6 +323,7 @@ class VolumeSpinWidget(QWidget):
         self._export_frames = []
         self._export_frame_index = 0
         self._export_cancelled = False
+        self._toggle_activity_dock(True)
         self._export_progress = progress(total=self._export_n_frames, desc=desc)
 
         self.export_button.setEnabled(False)
@@ -354,6 +365,7 @@ class VolumeSpinWidget(QWidget):
             self.status_label.setText('Export cancelled.')
             self.export_button.setEnabled(True)
             self.cancel_export_button.setEnabled(False)
+            self._toggle_activity_dock(False)
             return
 
         self.status_label.setText(f'Encoding {self._export_format} in the background...')
@@ -377,10 +389,12 @@ class VolumeSpinWidget(QWidget):
     def _on_export_finished(self, path):
         self.status_label.setText(f'Saved looping animation to {path}')
         self.export_button.setEnabled(True)
+        self._toggle_activity_dock(False)
 
     def _on_export_errored(self, exc):
         self.status_label.setText(f'Export failed: {exc}')
         self.export_button.setEnabled(True)
+        self._toggle_activity_dock(False)
 
     def _compress_animation(self):
         input_path, _ = QFileDialog.getOpenFileName(
@@ -402,6 +416,7 @@ class VolumeSpinWidget(QWidget):
 
         self.compress_button.setEnabled(False)
         self.status_label.setText(f'Compressing to {scheme}...')
+        self._toggle_activity_dock(True)
         worker = self._compress_animation_worker(input_path, output_path, scheme)
         worker.returned.connect(self._on_compress_finished)
         worker.errored.connect(self._on_compress_errored)
@@ -419,8 +434,8 @@ class VolumeSpinWidget(QWidget):
         fps = max(round(source_fps), _MIN_COMPRESSED_FPS)  # never go choppier than this
 
         compressed_size = original_size
-        for scale, quality in _COMPRESSION_TIERS:
-            _write_compressed(output_path, frames, fps, scheme, scale, quality)
+        for _scale, _quality in progress(_COMPRESSION_TIERS, desc=f'Compressing to {scheme}'):
+            _write_compressed(output_path, frames, fps, scheme, _scale, _quality)
             compressed_size = Path(output_path).stat().st_size
             if compressed_size <= _MAX_COMPRESSED_BYTES:
                 break
@@ -440,7 +455,9 @@ class VolumeSpinWidget(QWidget):
             f'{savings:.0f}% smaller, {size_note})'
         )
         self.compress_button.setEnabled(True)
+        self._toggle_activity_dock(False)
 
     def _on_compress_errored(self, exc):
         self.status_label.setText(f'Compression failed: {exc}')
         self.compress_button.setEnabled(True)
+        self._toggle_activity_dock(False)
