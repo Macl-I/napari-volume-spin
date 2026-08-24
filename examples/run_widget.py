@@ -1,5 +1,5 @@
 """Minimal example: launch napari with random 3D data and the Volume Spin widget."""
-
+#%%
 import napari
 import numpy as np
 
@@ -16,3 +16,4 @@ napari.run()
 viewer.window.add_dock_widget(spin_widget, area='right', name='Imaris Control Center')
 
 napari.run()
+#%%

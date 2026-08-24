@@ -30,13 +30,13 @@ def test_slider_and_spinbox_stay_in_sync(make_napari_viewer):
     viewer.add_image(np.random.random((16, 16, 16)))
     widget = VolumeSpinWidget(viewer)
 
-    widget._on_slider_moved(50)
-    assert widget.speed_box.value() == 5.0
-    assert widget.step_size == 5.0
+    widget._on_slider_moved(10)
+    assert widget.speed_box.value() == 0.5
+    assert widget.step_size == 0.5
 
-    widget._on_box_changed(2.5)
-    assert widget.speed_slider.value() == 25
-    assert widget.step_size == 2.5
+    widget._on_box_changed(0.25)
+    assert widget.speed_slider.value() == 5
+    assert widget.step_size == 0.25
 
 
 def test_axis_vector_matches_selected_radio_button(make_napari_viewer):
