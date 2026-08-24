@@ -1,66 +1,54 @@
 import numpy as np
 
-from napari_volume_spin._widget import (
-    ExampleQWidget,
-    ImageThreshold,
-    threshold_autogenerate_widget,
-    threshold_magic_widget,
-)
+from napari_volume_spin._widget import VolumeSpinWidget
 
 
-def test_threshold_autogenerate_widget():
-    # because our 'widget' is a pure function, we can call it and
-    # test it independently of napari
-    im_data = np.random.random((100, 100))
-    thresholded = threshold_autogenerate_widget(im_data, 0.5)
-    assert thresholded.shape == im_data.shape
-    # etc.
+def test_widget_builds_ui(make_napari_viewer):
+    viewer = make_napari_viewer(ndisplay=3)
+    viewer.add_image(np.random.random((16, 16, 16)))
+    widget = VolumeSpinWidget(viewer)
+
+    assert widget.radio_z.isChecked()
+    assert widget.axis_group.checkedId() == 2
+    assert widget.step_size == 1.0
 
 
-# make_napari_viewer is a pytest fixture that returns a napari viewer object
-# you don't need to import it, as long as napari is installed
-# in your testing environment
-def test_threshold_magic_widget(make_napari_viewer):
-    viewer = make_napari_viewer()
-    layer = viewer.add_image(np.random.random((100, 100)))
+def test_toggle_spin_starts_and_stops_timer(make_napari_viewer):
+    viewer = make_napari_viewer(ndisplay=3)
+    viewer.add_image(np.random.random((16, 16, 16)))
+    widget = VolumeSpinWidget(viewer)
 
-    # our widget will be a MagicFactory or FunctionGui instance
-    my_widget = threshold_magic_widget()
+    widget._toggle_spin(True)
+    assert widget.timer.isActive()
 
-    # if we 'call' this object, it'll execute our function
-    thresholded = my_widget(viewer.layers[0], 0.5)
-    assert thresholded.shape == layer.data.shape
-    # etc.
+    widget._toggle_spin(False)
+    assert not widget.timer.isActive()
 
 
-def test_image_threshold_widget(make_napari_viewer):
-    viewer = make_napari_viewer()
-    layer = viewer.add_image(np.random.random((100, 100)))
-    my_widget = ImageThreshold(viewer)
+def test_slider_and_spinbox_stay_in_sync(make_napari_viewer):
+    viewer = make_napari_viewer(ndisplay=3)
+    viewer.add_image(np.random.random((16, 16, 16)))
+    widget = VolumeSpinWidget(viewer)
 
-    # because we saved our widgets as attributes of the container
-    # we can set their values without having to 'interact' with the viewer
-    my_widget._image_layer_combo.value = layer
-    my_widget._threshold_slider.value = 0.5
+    widget._on_slider_moved(50)
+    assert widget.speed_box.value() == 5.0
+    assert widget.step_size == 5.0
 
-    # this allows us to run our functions directly and ensure
-    # correct results
-    my_widget._threshold_im()
-    assert len(viewer.layers) == 2
+    widget._on_box_changed(2.5)
+    assert widget.speed_slider.value() == 25
+    assert widget.step_size == 2.5
 
 
-# capsys is a pytest fixture that captures stdout and stderr output streams
-def test_example_q_widget(make_napari_viewer, capsys):
-    # make viewer and add an image layer using our fixture
-    viewer = make_napari_viewer()
-    viewer.add_image(np.random.random((100, 100)))
+def test_axis_vector_matches_selected_radio_button(make_napari_viewer):
+    viewer = make_napari_viewer(ndisplay=3)
+    viewer.add_image(np.random.random((16, 16, 16)))
+    widget = VolumeSpinWidget(viewer)
 
-    # create our widget, passing in the viewer
-    my_widget = ExampleQWidget(viewer)
+    widget.radio_x.setChecked(True)
+    assert widget._current_axis_vector() == (1, 0, 0)
 
-    # call our widget method
-    my_widget._on_click()
+    widget.radio_y.setChecked(True)
+    assert widget._current_axis_vector() == (0, 1, 0)
 
-    # read captured output and check that it's as we expected
-    captured = capsys.readouterr()
-    assert captured.out == 'napari has 1 layers\n'
+    widget.radio_z.setChecked(True)
+    assert widget._current_axis_vector() == (0, 0, 1)

@@ -13,15 +13,29 @@ Imaris-style continuous 3D spin animation controls for napari, with looping GIF 
 
 ----------------------------------
 
-This [napari] plugin was generated with [copier] using the [napari-plugin-template] (None).
+This [napari] plugin was generated with [copier] using the [napari-plugin-template].
 
-<!--
-Don't miss the full getting started guide to set up your new package:
-https://github.com/napari/napari-plugin-template#getting-started
+## Features
 
-and review the napari docs for plugin developers:
-https://napari.org/stable/plugins/index.html
--->
+`napari-volume-spin` adds a **Volume Spin Controls** dock widget that mimics
+Imaris's continuous 3D rotation animation:
+
+- **Play / Pause** a continuous spin of the 3D camera around the currently
+  viewed volume.
+- Choose the screen-relative rotation **axis**: X (pitch), Y (roll), or Z (yaw).
+- Adjust **spin speed** (0.1–10.0 degrees/frame) via a linked slider and spin box.
+- **Export a looping GIF** of the current axis/speed settings: a full 360°
+  rotation is captured automatically so the animation loops seamlessly, and
+  you are always prompted for the save location.
+
+## Usage
+
+1. Open napari with a 3D volume layer and switch to 3D display (`ndisplay=3`).
+2. Open `Plugins > napari-volume-spin: Volume Spin Controls`.
+3. Pick a rotation axis and speed, then click **Play Spin** to start the
+   continuous animation.
+4. Click **Export Looping GIF...** to render one full rotation loop at the
+   current axis/speed to a GIF file of your choosing.
 
 ## Installation
 
