@@ -1,0 +1,19 @@
+# Changes here will be overwritten by Copier; NEVER EDIT MANUALLY
+_commit: v2.3.0
+_src_path: https://github.com/napari/napari-plugin-template
+display_name: Volume Spin
+email: marcel.issler@kuleuven.be
+full_name: Marcel Issler
+github_repository_url: https://github.com/Macl-I/napari-volume-spin
+github_username_or_organization: Macl-I
+include_reader_plugin: false
+include_sample_data_plugin: false
+include_widget_plugin: true
+include_writer_plugin: false
+install_dependabot: true
+install_precommit: true
+license: BSD-3
+module_name: napari_volume_spin
+plugin_name: napari-volume-spin
+short_description: Imaris-style continuous 3D spin animation controls for napari,
+    with looping GIF export
