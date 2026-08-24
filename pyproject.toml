@@ -32,7 +32,8 @@ dependencies = [
     "napari",
     "qtpy",
     "vispy",
-    "imageio",
+    "imageio[ffmpeg]",
+    "pillow",
 ]
 
 [project.optional-dependencies]

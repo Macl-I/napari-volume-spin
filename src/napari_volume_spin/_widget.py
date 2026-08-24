@@ -1,12 +1,16 @@
-"""napari widget for continuous 3D camera spin animation with looping GIF export."""
+"""napari widget for continuous 3D camera spin animation with looping GIF/MP4 export."""
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import imageio
+from napari.qt.threading import thread_worker
 from napari.utils import progress
+from PIL import Image
 from qtpy.QtCore import Qt, QTimer
 from qtpy.QtWidgets import (
     QButtonGroup,
+    QComboBox,
     QDoubleSpinBox,
     QFileDialog,
     QHBoxLayout,
@@ -15,6 +19,7 @@ from qtpy.QtWidgets import (
     QRadioButton,
     QSlider,
     QSpinBox,
+    QTabWidget,
     QVBoxLayout,
     QWidget,
 )
@@ -26,9 +31,13 @@ if TYPE_CHECKING:
 # Screen-relative unit vectors keyed by the axis_group button id (0=X, 1=Y, 2=Z)
 _AXIS_VECTORS = {0: (1, 0, 0), 1: (0, 1, 0), 2: (0, 0, 1)}
 
+# Save-dialog filter and file extension keyed by the export format combo box text
+_FORMAT_FILTERS = {'GIF': 'GIF (*.gif)', 'MP4': 'MP4 (*.mp4)'}
+_FORMAT_EXTENSIONS = {'GIF': '.gif', 'MP4': '.mp4'}
+
 
 class VolumeSpinWidget(QWidget):
-    """Imaris-style continuous spin controls for napari's 3D camera, with looping GIF export."""
+    """Imaris-style continuous spin controls for napari's 3D camera, with looping GIF/MP4 export."""
 
     def __init__(self, viewer: 'napari.viewer.Viewer'):
         super().__init__()
@@ -41,6 +50,20 @@ class VolumeSpinWidget(QWidget):
         self._init_ui()
 
     def _init_ui(self):
+        layout = QVBoxLayout()
+
+        tabs = QTabWidget()
+        tabs.addTab(self._build_spin_tab(), 'Spin Controls')
+        tabs.addTab(self._build_export_tab(), 'Export')
+        layout.addWidget(tabs)
+
+        self.status_label = QLabel('')
+        layout.addWidget(self.status_label)
+
+        self.setLayout(layout)
+
+    def _build_spin_tab(self):
+        tab = QWidget()
         layout = QVBoxLayout()
 
         self.play_button = QPushButton('Play Spin')
@@ -75,22 +98,45 @@ class VolumeSpinWidget(QWidget):
         speed_layout.addWidget(self.speed_box)
         layout.addLayout(speed_layout)
 
+        layout.addStretch()
+        tab.setLayout(layout)
+        return tab
+
+    def _build_export_tab(self):
+        tab = QWidget()
+        layout = QVBoxLayout()
+
         layout.addWidget(QLabel('Export Animation:'))
-        export_layout = QHBoxLayout()
-        export_layout.addWidget(QLabel('FPS:'))
+        format_layout = QHBoxLayout()
+        format_layout.addWidget(QLabel('Format:'))
+        self.format_combo = QComboBox()
+        self.format_combo.addItems(['GIF', 'MP4'])
+        format_layout.addWidget(self.format_combo)
+        format_layout.addWidget(QLabel('FPS:'))
         self.fps_box = QSpinBox()
         self.fps_box.setRange(1, 60)
         self.fps_box.setValue(30)
-        export_layout.addWidget(self.fps_box)
-        self.export_button = QPushButton('Export Looping GIF...')
-        self.export_button.clicked.connect(self._export_gif)
-        export_layout.addWidget(self.export_button)
-        layout.addLayout(export_layout)
+        format_layout.addWidget(self.fps_box)
+        layout.addLayout(format_layout)
 
-        self.status_label = QLabel('')
-        layout.addWidget(self.status_label)
+        export_buttons_layout = QHBoxLayout()
+        self.export_button = QPushButton('Export Looping Animation...')
+        self.export_button.clicked.connect(self._export_animation)
+        export_buttons_layout.addWidget(self.export_button)
+        self.cancel_export_button = QPushButton('Cancel')
+        self.cancel_export_button.setEnabled(False)
+        self.cancel_export_button.clicked.connect(self._cancel_export)
+        export_buttons_layout.addWidget(self.cancel_export_button)
+        layout.addLayout(export_buttons_layout)
 
-        self.setLayout(layout)
+        layout.addWidget(QLabel('Reduce File Size (e.g. for e-mail attachments):'))
+        self.compress_button = QPushButton('Compress GIF...')
+        self.compress_button.clicked.connect(self._compress_gif)
+        layout.addWidget(self.compress_button)
+
+        layout.addStretch()
+        tab.setLayout(layout)
+        return tab
 
     def _on_slider_moved(self, val):
         self.speed_box.blockSignals(True)
@@ -133,44 +179,147 @@ class VolumeSpinWidget(QWidget):
         camera._quaternion = camera._quaternion * delta_rotation
         camera.view_changed()
 
-    def _export_gif(self):
+    def _export_animation(self):
         camera = self._get_camera()
         if camera is None:
             self.status_label.setText('Could not access the 3D camera for export.')
             return
 
+        fmt = self.format_combo.currentText()
         path, _ = QFileDialog.getSaveFileName(
-            self, 'Export Looping GIF', '', 'GIF (*.gif)'
+            self, 'Export Looping Animation', '', _FORMAT_FILTERS[fmt]
         )
         if not path:
             return
-        if not path.lower().endswith('.gif'):
-            path += '.gif'
+        if not path.lower().endswith(_FORMAT_EXTENSIONS[fmt]):
+            path += _FORMAT_EXTENSIONS[fmt]
 
-        was_playing = self.timer.isActive()
+        self._export_format = fmt
+        self._export_camera = camera
+        self._export_was_playing = self.timer.isActive()
         self.timer.stop()
 
-        axis_vector = self._current_axis_vector()
-        n_frames = max(1, round(360.0 / self.step_size))  # one full loop back to start
-        fps = self.fps_box.value()
-        original_quaternion = camera._quaternion
-        delta_rotation = Quaternion.create_from_axis_angle(
-            self.step_size, *axis_vector, degrees=True
+        self._export_original_quaternion = camera._quaternion
+        self._export_delta_rotation = Quaternion.create_from_axis_angle(
+            self.step_size, *self._current_axis_vector(), degrees=True
+        )
+        self._export_n_frames = max(1, round(360.0 / self.step_size))  # one full loop back to start
+        self._export_fps = self.fps_box.value()
+        self._export_path = path
+        self._export_frames = []
+        self._export_frame_index = 0
+        self._export_cancelled = False
+        self._export_progress = progress(
+            total=self._export_n_frames, desc=f'Capturing {fmt} frames'
         )
 
         self.export_button.setEnabled(False)
-        self.status_label.setText(f'Exporting {n_frames} frames...')
-        try:
-            frames = []
-            for _ in progress(range(n_frames), desc='Exporting looping GIF'):
-                camera._quaternion = camera._quaternion * delta_rotation
-                camera.view_changed()
-                frames.append(self.viewer.screenshot(canvas_only=True))
-            imageio.mimsave(path, frames, fps=fps, loop=0)
-            self.status_label.setText(f'Saved looping GIF to {path}')
-        finally:
-            camera._quaternion = original_quaternion
-            camera.view_changed()
+        self.cancel_export_button.setEnabled(True)
+        self.status_label.setText(f'Capturing {self._export_n_frames} frames...')
+        self._capture_next_frame()
+
+    def _capture_next_frame(self):
+        if self._export_cancelled or self._export_frame_index >= self._export_n_frames:
+            self._export_progress.close()
+            self._finish_capture()
+            return
+
+        camera = self._export_camera
+        camera._quaternion = camera._quaternion * self._export_delta_rotation
+        camera.view_changed()
+        self._export_frames.append(self.viewer.screenshot(canvas_only=True))
+        self._export_frame_index += 1
+        self._export_progress.update(1)
+
+        # Schedule via the Qt event loop (rather than a blocking loop) so the progress bar repaints and Cancel stays clickable
+        QTimer.singleShot(0, self._capture_next_frame)
+
+    def _cancel_export(self):
+        self._export_cancelled = True
+
+    def _finish_capture(self):
+        camera = self._export_camera
+        camera._quaternion = self._export_original_quaternion
+        camera.view_changed()
+        if self._export_was_playing:
+            self.timer.start(16)
+
+        if self._export_cancelled or not self._export_frames:
+            self.status_label.setText('Export cancelled.')
             self.export_button.setEnabled(True)
-            if was_playing:
-                self.timer.start(16)
+            self.cancel_export_button.setEnabled(False)
+            return
+
+        self.status_label.setText(f'Encoding {self._export_format} in the background...')
+        self.cancel_export_button.setEnabled(False)
+        worker = self._encode_animation(
+            self._export_path, self._export_frames, self._export_fps, self._export_format
+        )
+        worker.returned.connect(self._on_export_finished)
+        worker.errored.connect(self._on_export_errored)
+        self._export_worker = worker  # keep a reference so the thread isn't garbage-collected
+        worker.start()
+
+    @thread_worker
+    def _encode_animation(self, path, frames, fps, fmt):
+        if fmt == 'GIF':
+            imageio.mimsave(path, frames, fps=fps, loop=0)
+        else:
+            imageio.mimsave(path, frames, fps=fps, codec='libx264', quality=8)
+        return path
+
+    def _on_export_finished(self, path):
+        self.status_label.setText(f'Saved looping animation to {path}')
+        self.export_button.setEnabled(True)
+
+    def _on_export_errored(self, exc):
+        self.status_label.setText(f'Export failed: {exc}')
+        self.export_button.setEnabled(True)
+
+    def _compress_gif(self):
+        input_path, _ = QFileDialog.getOpenFileName(
+            self, 'Select GIF to Compress', '', 'GIF (*.gif)'
+        )
+        if not input_path:
+            return
+        output_path, _ = QFileDialog.getSaveFileName(
+            self, 'Save Compressed GIF', '', 'GIF (*.gif)'
+        )
+        if not output_path:
+            return
+        if not output_path.lower().endswith('.gif'):
+            output_path += '.gif'
+
+        self.compress_button.setEnabled(False)
+        self.status_label.setText('Compressing GIF...')
+        worker = self._compress_gif_worker(input_path, output_path)
+        worker.returned.connect(self._on_compress_finished)
+        worker.errored.connect(self._on_compress_errored)
+        self._compress_worker = worker  # keep a reference so the thread isn't garbage-collected
+        worker.start()
+
+    @thread_worker
+    def _compress_gif_worker(self, input_path, output_path):
+        original_size = Path(input_path).stat().st_size
+        frames = imageio.mimread(input_path)
+        downscaled = []
+        for frame in frames:
+            image = Image.fromarray(frame).convert('RGB')
+            new_size = (max(1, image.width // 2), max(1, image.height // 2))
+            downscaled.append(image.resize(new_size, Image.LANCZOS))
+        imageio.mimsave(output_path, downscaled, loop=0, palettesize=64)
+        compressed_size = Path(output_path).stat().st_size
+        return output_path, original_size, compressed_size
+
+    def _on_compress_finished(self, result):
+        output_path, original_size, compressed_size = result
+        savings = (1 - compressed_size / original_size) * 100 if original_size else 0
+        self.status_label.setText(
+            f'Compressed GIF saved to {output_path} '
+            f'({original_size // 1024} KB \u2192 {compressed_size // 1024} KB, {savings:.0f}% smaller)'
+        )
+        self.compress_button.setEnabled(True)
+
+    def _on_compress_errored(self, exc):
+        self.status_label.setText(f'Compression failed: {exc}')
+        self.compress_button.setEnabled(True)

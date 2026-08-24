@@ -52,3 +52,16 @@ def test_axis_vector_matches_selected_radio_button(make_napari_viewer):
 
     widget.radio_z.setChecked(True)
     assert widget._current_axis_vector() == (0, 0, 1)
+
+
+def test_export_tab_has_format_and_compress_controls(make_napari_viewer):
+    viewer = make_napari_viewer(ndisplay=3)
+    viewer.add_image(np.random.random((16, 16, 16)))
+    widget = VolumeSpinWidget(viewer)
+
+    assert [widget.format_combo.itemText(i) for i in range(widget.format_combo.count())] == [
+        'GIF',
+        'MP4',
+    ]
+    assert not widget.cancel_export_button.isEnabled()
+    assert widget.compress_button.isEnabled()

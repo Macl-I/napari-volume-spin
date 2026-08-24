@@ -13,7 +13,4 @@ viewer.window.add_dock_widget(spin_widget, area='right', name='Volume Spin Contr
 
 napari.run()
 
-viewer.window.add_dock_widget(spin_widget, area='right', name='Imaris Control Center')
-
-napari.run()
 #%%
