@@ -32,23 +32,34 @@ that mimics Imaris's continuous 3D rotation animation:
 - **Export a looping GIF or MP4** of the current axis/speed settings: a full
   360° rotation is captured automatically so the animation loops seamlessly,
   and you are always prompted for the save location.
+- **Loop Axis**: for multi-dimensional images (e.g. a time series), pick an
+  extra (non-displayed) axis to page through frame-by-frame while the camera
+  keeps spinning — the number of captured frames then matches that axis's
+  length instead of a fixed 360° rotation, and the FPS field controls
+  playback speed of the resulting file.
 - A **progress bar** and **Cancel** button are shown while frames are captured;
   the (often slower) file encoding step runs in a background thread so napari
   stays fully interactive.
-- **Compress GIF...** shrinks an existing GIF (half resolution, reduced color
-  palette) — handy for keeping animations small enough for e-mail attachments.
+- **Compress Animation...** shrinks an existing GIF/MP4/WebP/MOV/AVI file.
+  Choose a compression **scheme** — WebP or MP4 use lossy, per-frame
+  (JPEG-like) image compression instead of GIF's 256-color palette, which
+  avoids the choppy banding/dithering artifacts a plain palette-based GIF
+  produces. Compression automatically tries progressively lower
+  scale/quality tiers until the output is under 25 MB (handy for e-mail
+  attachments), while never dropping below 24 fps.
 
 ## Usage
 
-1. Open napari with a 3D volume layer and switch to 3D display (`ndisplay=3`).
+1. Open napari with a 3D (or higher-dimensional) volume layer and switch to
+   3D display (`ndisplay=3`).
 2. Open `Plugins > napari-volume-spin: Volume Spin Controls`.
 3. On the **Spin Controls** tab, pick a rotation axis and speed, then click
    **Play Spin** to start the continuous animation.
-4. Switch to the **Export** tab, choose **GIF** or **MP4** and an FPS, then
-   click **Export Looping Animation...** to render one full rotation loop at
-   the current axis/speed. Use **Cancel** to abort mid-capture.
-5. If the resulting GIF is too large (e.g. for e-mail), use **Compress
-   GIF...** to save a smaller copy.
+4. Switch to the **Export** tab, choose **GIF** or **MP4**, an FPS, and
+   optionally a **Loop Axis** (for multi-dimensional images), then click
+   **Export Looping Animation...**. Use **Cancel** to abort mid-capture.
+5. If the resulting file is too large (e.g. for e-mail), use **Compress
+   Animation...**, pick a compression scheme, and save a smaller copy.
 
 ## Installation
 
