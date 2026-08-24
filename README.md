@@ -15,6 +15,12 @@ Imaris-style continuous 3D spin animation controls for napari, with looping GIF/
 
 This [napari] plugin was generated with [copier] using the [napari-plugin-template].
 
+## Demo
+
+<!-- Record a short screen capture of the plugin in action (Spin Controls -> Export -> Compress)
+     and save it as docs/demo.gif (or docs/demo.mp4), then this will render on GitHub/PyPI/napari hub. -->
+![napari-volume-spin demo](docs/demo.gif)
+
 ## Features
 
 `napari-volume-spin` adds a **Volume Spin Controls** dock widget with three
