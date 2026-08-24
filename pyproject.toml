@@ -1,7 +1,7 @@
 [project]
 name = "napari-volume-spin"
 dynamic = ["version"]
-description = "Imaris-style continuous 3D spin animation controls for napari, with looping GIF export"
+description = "Imaris-style continuous 3D spin animation controls for napari, with looping GIF/MP4 export"
 readme = "README.md"
 license = "BSD-3-Clause"
 license-files = ["LICENSE"]
