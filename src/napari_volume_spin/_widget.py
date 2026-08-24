@@ -3,6 +3,7 @@
 from typing import TYPE_CHECKING
 
 import imageio
+from napari.utils import progress
 from qtpy.QtCore import Qt, QTimer
 from qtpy.QtWidgets import (
     QButtonGroup,
@@ -161,7 +162,7 @@ class VolumeSpinWidget(QWidget):
         self.status_label.setText(f'Exporting {n_frames} frames...')
         try:
             frames = []
-            for _ in range(n_frames):
+            for _ in progress(range(n_frames), desc='Exporting looping GIF'):
                 camera._quaternion = camera._quaternion * delta_rotation
                 camera.view_changed()
                 frames.append(self.viewer.screenshot(canvas_only=True))
