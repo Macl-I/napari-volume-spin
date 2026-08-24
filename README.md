@@ -31,7 +31,7 @@ tabs that mimics Imaris's continuous 3D rotation animation:
 - **Play / Pause** a continuous spin of the 3D camera around the currently
   viewed volume.
 - Choose the screen-relative rotation **axis**: X (pitch), Y (roll), or Z (yaw).
-- Adjust **spin speed** (0.05–1.0 degrees/frame) via a linked slider and spin box.
+- Adjust **spin speed** (0.05–5.0 degrees/frame) via a linked slider and spin box.
 
 **Export tab**
 

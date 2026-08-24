@@ -139,11 +139,11 @@ class VolumeSpinWidget(QWidget):
         layout.addWidget(QLabel('Spin Speed (Degrees/Frame):'))
         speed_layout = QHBoxLayout()
         self.speed_box = QDoubleSpinBox()
-        self.speed_box.setRange(0.05, 1.0)
+        self.speed_box.setRange(0.05, 5.0)
         self.speed_box.setSingleStep(0.05)
         self.speed_box.setValue(1.0)
         self.speed_slider = QSlider(Qt.Horizontal)
-        self.speed_slider.setRange(1, 20)  # 1-20 maps to 0.05-1.0 deg/frame
+        self.speed_slider.setRange(1, 100)  # 1-100 maps to 0.05-5.0 deg/frame
         self.speed_slider.setValue(20)
         self.speed_slider.valueChanged.connect(self._on_slider_moved)
         self.speed_box.valueChanged.connect(self._on_box_changed)
