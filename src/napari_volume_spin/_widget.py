@@ -106,6 +106,7 @@ class VolumeSpinWidget(QWidget):
         tabs = QTabWidget()
         tabs.addTab(self._build_spin_tab(), 'Spin Controls')
         tabs.addTab(self._build_export_tab(), 'Export')
+        tabs.addTab(self._build_compress_tab(), 'Compress')
         layout.addWidget(tabs)
 
         self.status_label = QLabel('')
@@ -187,6 +188,14 @@ class VolumeSpinWidget(QWidget):
         self.cancel_export_button.clicked.connect(self._cancel_export)
         export_buttons_layout.addWidget(self.cancel_export_button)
         layout.addLayout(export_buttons_layout)
+
+        layout.addStretch()
+        tab.setLayout(layout)
+        return tab
+
+    def _build_compress_tab(self):
+        tab = QWidget()
+        layout = QVBoxLayout()
 
         layout.addWidget(QLabel('Reduce File Size (e.g. for e-mail attachments, target <25 MB):'))
         compress_layout = QHBoxLayout()

@@ -17,8 +17,8 @@ This [napari] plugin was generated with [copier] using the [napari-plugin-templa
 
 ## Features
 
-`napari-volume-spin` adds a **Volume Spin Controls** dock widget with two tabs
-that mimics Imaris's continuous 3D rotation animation:
+`napari-volume-spin` adds a **Volume Spin Controls** dock widget with three
+tabs that mimics Imaris's continuous 3D rotation animation:
 
 **Spin Controls tab**
 
@@ -40,6 +40,9 @@ that mimics Imaris's continuous 3D rotation animation:
 - A **progress bar** and **Cancel** button are shown while frames are captured;
   the (often slower) file encoding step runs in a background thread so napari
   stays fully interactive.
+
+**Compress tab**
+
 - **Compress Animation...** shrinks an existing GIF/MP4/WebP/MOV/AVI file.
   Choose a compression **scheme** — WebP or MP4 use lossy, per-frame
   (JPEG-like) image compression instead of GIF's 256-color palette, which
@@ -58,8 +61,9 @@ that mimics Imaris's continuous 3D rotation animation:
 4. Switch to the **Export** tab, choose **GIF** or **MP4**, an FPS, and
    optionally a **Loop Axis** (for multi-dimensional images), then click
    **Export Looping Animation...**. Use **Cancel** to abort mid-capture.
-5. If the resulting file is too large (e.g. for e-mail), use **Compress
-   Animation...**, pick a compression scheme, and save a smaller copy.
+5. If the resulting file is too large (e.g. for e-mail), switch to the
+   **Compress** tab, pick a compression scheme, and click **Compress
+   Animation...** to save a smaller copy.
 
 ## Installation
 
